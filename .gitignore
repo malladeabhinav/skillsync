@@ -20,3 +20,9 @@ npm-debug.log*
 # OS files
 .DS_Store
 Thumbs.db
+
+# Nested repo
+SkillSync/
+
+# Sensitive files
+cookies.txt

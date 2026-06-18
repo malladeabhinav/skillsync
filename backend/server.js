@@ -18,12 +18,14 @@ const isProd = process.env.NODE_ENV === 'production';
 // Dev:  http://localhost:5173
 // Prod: https://yourdomain.com
 const allowedOrigin = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
+// In development allow the null origin (e.g., scripts run via node) alongside the usual dev origin.
+const devOrigins = isProd ? allowedOrigin : [allowedOrigin, 'null'];
 
 app.use(cors({
-    origin: allowedOrigin,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type'],
-    credentials: true,   // Required for cookies to cross origins
+  origin: devOrigins,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type'],
+  credentials: true,   // Required for cookies to cross origins
 }));
 
 // ── Middleware ────────────────────────────────────────────────────────────────
