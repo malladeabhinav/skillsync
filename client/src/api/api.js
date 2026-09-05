@@ -1,6 +1,4 @@
-import axios from 'axios'
-
-const BASE = 'http://localhost:5000'
+import api from './axios'
 
 /**
  * POST /api/resume/analyze
@@ -12,7 +10,7 @@ export async function analyzeResume(name, file) {
     form.append('name', name)
     form.append('resume', file)
 
-    const { data } = await axios.post(`${BASE}/api/resume/analyze`, form, {
+    const { data } = await api.post('/resume/analyze', form, {
         headers: { 'Content-Type': 'multipart/form-data' },
     })
     return data
@@ -24,6 +22,6 @@ export async function analyzeResume(name, file) {
  */
 export async function getMatches(userId, type) {
     const params = type ? { type } : {}
-    const { data } = await axios.get(`${BASE}/api/match/${userId}`, { params })
+    const { data } = await api.get(`/match/${userId}`, { params })
     return data
 }
