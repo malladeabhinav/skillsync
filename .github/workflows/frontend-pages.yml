@@ -63,22 +63,74 @@ jobs:
             exit 1
           fi
 
-          expected_matching_api="${RENDER_MATCHING_URL}/api"
-          case "$expected_matching_api" in
+          expected_auth_url="${RENDER_AUTH_URL%/}"
+          expected_api_url="${RENDER_MATCHING_URL%/}/api"
+
+          case "$expected_api_url" in
             */api) ;;
             *)
-              echo "ERROR: Matching API endpoint is not ending in /api: $expected_matching_api"
+              echo "ERROR: Matching API endpoint is not ending in /api: $expected_api_url"
               exit 1
               ;;
           esac
 
           echo "Render endpoint validation passed."
-          echo "Auth origin: $RENDER_AUTH_URL"
-          echo "Matching API: $expected_matching_api"
+          echo "Auth origin: $expected_auth_url"
+          echo "Matching API: $expected_api_url"
 
       - name: Install dependencies
         working-directory: client
         run: npm ci
+
+      - name: Validate Vite environment resolution
+        working-directory: client
+        env:
+          RENDER_AUTH_URL: ${{ vars.RENDER_AUTH_URL }}
+          RENDER_MATCHING_URL: ${{ vars.RENDER_MATCHING_URL }}
+        run: |
+          set -euo pipefail
+
+          expected_auth_url="${RENDER_AUTH_URL%/}"
+          expected_api_url="${RENDER_MATCHING_URL%/}/api"
+
+          vite_output="$(node --input-type=module <<'NODE'
+          import { build, loadConfigFromFile } from 'vite'
+          import { resolve } from 'node:path'
+
+          const configFile = resolve('vite.config.js')
+          const loaded = await loadConfigFromFile(
+            { command: 'build', mode: 'production' },
+            configFile,
+          )
+
+          const define = loaded?.config?.define ?? {}
+          const auth = JSON.parse(define['import.meta.env.VITE_AUTH_URL'] ?? 'null')
+          const api = JSON.parse(define['import.meta.env.VITE_API_URL'] ?? 'null')
+
+          process.stdout.write(JSON.stringify({ auth, api }))
+          NODE
+          )"
+
+          actual_auth_url="$(node --input-type=module -e "const v=JSON.parse(process.argv[1]); process.stdout.write(v.auth ?? '')" "$vite_output")"
+          actual_api_url="$(node --input-type=module -e "const v=JSON.parse(process.argv[1]); process.stdout.write(v.api ?? '')" "$vite_output")"
+
+          if [ "$actual_auth_url" != "$expected_auth_url" ]; then
+            echo "ERROR: VITE_AUTH_URL does not resolve from RENDER_AUTH_URL."
+            echo "Expected: $expected_auth_url"
+            echo "Actual:   $actual_auth_url"
+            exit 1
+          fi
+
+          if [ "$actual_api_url" != "$expected_api_url" ]; then
+            echo "ERROR: VITE_API_URL does not resolve from RENDER_MATCHING_URL."
+            echo "Expected: $expected_api_url"
+            echo "Actual:   $actual_api_url"
+            exit 1
+          fi
+
+          echo "Vite environment resolution passed."
+          echo "VITE_AUTH_URL -> $actual_auth_url"
+          echo "VITE_API_URL  -> $actual_api_url"
 
       - name: Build
         working-directory: client
