@@ -1,0 +1,46 @@
+services:
+  - type: web
+    name: skillsync-auth
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4000
+      - key: CLIENT_ORIGIN
+        sync: false
+      - key: SUPABASE_DB_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+
+  - type: web
+    name: skillsync-matching
+    runtime: docker
+    rootDir: server
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: CLIENT_ORIGIN
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: DATA_GOV_API_KEY
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: ADZUNA_APP_ID
+        sync: false
+      - key: ADZUNA_APP_KEY
+        sync: false
