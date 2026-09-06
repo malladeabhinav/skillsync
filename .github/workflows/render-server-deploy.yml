@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'server/**'
+      - 'render.yaml'
       - '.github/workflows/render-server-deploy.yml'
   workflow_dispatch:
 
@@ -20,57 +21,31 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - name: Trigger Render deploy
-        id: deploy
+      - name: Trigger Render deploy hook
         env:
-          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-          RENDER_SERVICE_ID: ${{ secrets.RENDER_MATCHING_SERVICE_ID }}
-          COMMIT_ID: ${{ github.sha }}
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_MATCHING_DEPLOY_HOOK_URL }}
         run: |
           set -euo pipefail
-          response=$(curl --fail --silent --show-error \
+          test -n "$RENDER_DEPLOY_HOOK_URL"
+          curl --fail --silent --show-error --max-time 30 \
             -X POST \
-            -H "Authorization: Bearer ${RENDER_API_KEY}" \
-            -H "Content-Type: application/json" \
-            "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys" \
-            --data "{\"commitId\":\"${COMMIT_ID}\"}")
-          deploy_id=$(printf '%s' "$response" | jq -r '.deploy.id // .id // empty')
-          test -n "$deploy_id"
-          echo "deploy_id=$deploy_id" >> "$GITHUB_OUTPUT"
+            "$RENDER_DEPLOY_HOOK_URL"
+          echo "Render matching deploy hook triggered"
 
-      - name: Wait for Render deploy
-        env:
-          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-          RENDER_SERVICE_ID: ${{ secrets.RENDER_MATCHING_SERVICE_ID }}
-          DEPLOY_ID: ${{ steps.deploy.outputs.deploy_id }}
-        run: |
-          set -euo pipefail
-          for i in $(seq 1 60); do
-            response=$(curl --fail --silent --show-error \
-              -H "Authorization: Bearer ${RENDER_API_KEY}" \
-              "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys/${DEPLOY_ID}")
-            status=$(printf '%s' "$response" | jq -r '.status // empty')
-            echo "Render deploy status: ${status}"
-            case "$status" in
-              live) exit 0 ;;
-              build_failed|update_failed|deactivated|canceled|cancelled) exit 1 ;;
-            esac
-            sleep 10
-          done
-          echo "Timed out waiting for Render deploy"
-          exit 1
-
-      - name: Health check
+      - name: Wait for matching health check
         env:
           HEALTH_URL: ${{ secrets.RENDER_MATCHING_URL }}
         run: |
           set -euo pipefail
-          for i in $(seq 1 12); do
+          test -n "$HEALTH_URL"
+          for i in $(seq 1 60); do
             if curl --fail --silent --show-error --max-time 10 "${HEALTH_URL%/}/" > /tmp/health.json; then
               cat /tmp/health.json
+              echo "Matching server is healthy"
               exit 0
             fi
-            sleep 5
+            echo "Waiting for matching server... attempt ${i}/60"
+            sleep 10
           done
           echo "Matching server health check failed"
           exit 1
