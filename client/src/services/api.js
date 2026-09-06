@@ -4,12 +4,20 @@ import api from '../api/axios'
 /**
  * SkillSync API Service
  * ─────────────────────
- * VITE_AUTH_URL → auth backend  (localhost:4000 in dev, Render in prod)
- * VITE_API_URL  → matching API  (localhost:5000 in dev, Render in prod)
+ * Build-time environment flow:
  *
- * Both are injected by Vite from:
- *   client/.env              → dev values
- *   client/.env.production   → production values
+ *   RENDER_AUTH_URL     → VITE_AUTH_URL
+ *   RENDER_MATCHING_URL → VITE_API_URL
+ *
+ * The GitHub Pages workflow provides the RENDER_* values to Vite at build
+ * time. vite.config.js normalizes them into the VITE_* values consumed by
+ * the browser:
+ *   VITE_AUTH_URL = RENDER_AUTH_URL without a trailing slash
+ *   VITE_API_URL  = RENDER_MATCHING_URL + /api
+ *
+ * For local development, vite.config.js can fall back to VITE_AUTH_URL and
+ * VITE_API_URL (or localhost defaults). Production should use the RENDER_*
+ * values supplied by GitHub Actions rather than client/.env.production.
  *
  * All auth calls use withCredentials: true so the browser sends/receives
  * the HttpOnly cookie. No token is ever stored in JavaScript.
