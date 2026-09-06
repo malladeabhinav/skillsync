@@ -32,6 +32,50 @@ jobs:
           cache: npm
           cache-dependency-path: client/package-lock.json
 
+      - name: Validate Render API endpoints
+        env:
+          RENDER_AUTH_URL: ${{ vars.RENDER_AUTH_URL }}
+          RENDER_MATCHING_URL: ${{ vars.RENDER_MATCHING_URL }}
+        run: |
+          set -euo pipefail
+
+          validate_base_url() {
+            local name="$1"
+            local value="$2"
+
+            if [ -z "$value" ]; then
+              echo "ERROR: $name is missing."
+              exit 1
+            fi
+
+            if [[ ! "$value" =~ ^https://[^/]+$ ]]; then
+              echo "ERROR: $name must be an HTTPS origin without a path, query, or fragment."
+              echo "Expected format: https://service-name.onrender.com"
+              exit 1
+            fi
+          }
+
+          validate_base_url "RENDER_AUTH_URL" "$RENDER_AUTH_URL"
+          validate_base_url "RENDER_MATCHING_URL" "$RENDER_MATCHING_URL"
+
+          if [[ "$RENDER_MATCHING_URL" == */api ]]; then
+            echo "ERROR: RENDER_MATCHING_URL must not include /api; Vite adds /api for the production API endpoint."
+            exit 1
+          fi
+
+          expected_matching_api="${RENDER_MATCHING_URL}/api"
+          case "$expected_matching_api" in
+            */api) ;;
+            *)
+              echo "ERROR: Matching API endpoint is not ending in /api: $expected_matching_api"
+              exit 1
+              ;;
+          esac
+
+          echo "Render endpoint validation passed."
+          echo "Auth origin: $RENDER_AUTH_URL"
+          echo "Matching API: $expected_matching_api"
+
       - name: Install dependencies
         working-directory: client
         run: npm ci
