@@ -5,6 +5,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+env:
+  RENDER_AUTH_URL: ${{ vars.RENDER_AUTH_URL }}
+  RENDER_MATCHING_URL: ${{ vars.RENDER_MATCHING_URL }}
+
 permissions:
   contents: read
   pages: write
@@ -35,8 +39,8 @@ jobs:
       - name: Build
         working-directory: client
         env:
-          VITE_AUTH_URL: ${{ vars.VITE_AUTH_URL }}
-          VITE_API_URL: ${{ vars.VITE_API_URL }}
+          RENDER_AUTH_URL: ${{ vars.RENDER_AUTH_URL }}
+          RENDER_MATCHING_URL: ${{ vars.RENDER_MATCHING_URL }}
         run: npm run build
 
       - name: Setup Pages
